@@ -2,34 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Check-In</title>
-
+  <title>Daily Check-In</title>
   <style>
     * {
       box-sizing: border-box;
     }
-
     body {
       margin: 0;
       height: 100vh;
       background: linear-gradient(180deg, #f7f8f6, #eef1ee);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 40px;
+      padding: 20px;
     }
-
     .card {
       background: #ffffff;
       padding: 48px 42px;
       border-radius: 22px;
-      width: 340px;
+      width: 100%;
+      max-width: 340px;
       text-align: center;
-      box-shadow:
-        0 20px 40px rgba(0,0,0,0.06),
-        0 8px 16px rgba(0,0,0,0.04);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.06), 0 8px 16px rgba(0,0,0,0.04);
     }
-
     h1 {
       font-size: 24px;
       font-weight: 500;
@@ -37,29 +35,40 @@
       margin-bottom: 12px;
       letter-spacing: -0.02em;
     }
-
     p {
       font-size: 15px;
       color: #6b756f;
       line-height: 1.5;
       margin-bottom: 36px;
     }
-
-    .status {
-      width: 110px;
-      height: 110px;
-      margin: 0 auto 36px;
+    .status-container {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    .user-status {
+      text-align: center;
+    }
+    .user-status h3 {
+      font-size: 16px;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 15px;
+    }
+    .status-circle {
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
+      margin: 0 auto 20px;
       background: #e6ebe8;
       position: relative;
       transition: background 0.4s ease;
     }
-
-    .status.ok {
+    .status-circle.checked-in {
       background: #7ec9a2;
     }
-
-    .status.ok::after {
+    .status-circle.checked-in::after {
       content: "✓";
       position: absolute;
       top: 50%;
@@ -69,47 +78,142 @@
       color: white;
       font-weight: 500;
     }
-
     button {
       background: #2f8f6b;
       border: none;
       border-radius: 14px;
-      padding: 14px 32px;
-      font-size: 16px;
+      padding: 16px 40px;
+      font-size: 17px;
       font-weight: 500;
       color: white;
       cursor: pointer;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
       box-shadow: 0 8px 18px rgba(47,143,107,0.25);
+      margin-top: 20px;
     }
-
     button:hover {
       transform: translateY(-1px);
       box-shadow: 0 12px 24px rgba(47,143,107,0.28);
     }
-
     button:active {
       transform: translateY(0);
       box-shadow: 0 6px 14px rgba(47,143,107,0.22);
+    }
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    #lastUpdate {
+      font-size: 13px;
+      color: #888;
+      margin-top: 25px;
+      font-style: italic;
     }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h1>Check-In</h1>
-    <p>A quiet signal to let the other person know you’re okay today.</p>
+    <h1>Daily Check-In</h1>
+    <p>A quiet signal to let the other person know you're okay today.</p>
 
-    <div id="status" class="status"></div>
+    <div class="status-container">
+      <div class="user-status">
+        <h3>You</h3>
+        <div id="myStatus" class="status-circle"></div>
+        <div id="myTime">-</div>
+      </div>
+      <div class="user-status">
+        <h3>Her</h3>
+        <div id="herStatus" class="status-circle"></div>
+        <div id="herTime">-</div>
+      </div>
+    </div>
 
-    <button onclick="checkIn()">I’m okay</button>
+    <button id="checkInBtn" onclick="checkIn()">I'm okay</button>
+
+    <div id="lastUpdate">Connecting...</div>
   </div>
 
-  <script>
-    function checkIn() {
-      document.getElementById("status").classList.add("ok");
-    }
-  </script>
+  <!-- Firebase Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
+  <script>
+   
+    const firebaseConfig = {
+      apiKey: "AIzaSyDNWN4YXuamyifYfr1PVbLv91YNcuSLT-c",
+      authDomain: "check-in-d0f7c.firebaseapp.com",
+      databaseURL: "https://check-in-d0f7c-default-rtdb.europe-west1.firebasedatabase.app/",
+      projectId: "check-in-d0f7c",
+      storageBucket: "check-in-d0f7c.firebasestorage.app",
+      messagingSenderId: "951259510445",
+      appId: "1:951259510445:web:7d085e1d4d4ef22293f824",
+      measurementId: "G-FW8NDC4SW4"
+    };
+
+   
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+   
+    const myStatusRef = database.ref('status/user1'); 
+    const herStatusRef = database.ref('status/user2'); 
+
+    function checkIn() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      
+      myStatusRef.set({
+        checkedIn: true,
+        lastCheckIn: timeString
+      });
+    }
+
+    
+    myStatusRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      const myStatusCircle = document.getElementById('myStatus');
+      const myTimeDiv = document.getElementById('myTime');
+
+      if (data && data.checkedIn) {
+        myStatusCircle.classList.add('checked-in');
+        myTimeDiv.textContent = `at ${data.lastCheckIn}`;
+      } else {
+        myStatusCircle.classList.remove('checked-in');
+        myTimeDiv.textContent = '-';
+      }
+      updateLastUpdateTime();
+    });
+
+    
+    herStatusRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      const herStatusCircle = document.getElementById('herStatus');
+      const herTimeDiv = document.getElementById('herTime');
+
+      if (data && data.checkedIn) {
+        herStatusCircle.classList.add('checked-in');
+        herTimeDiv.textContent = `at ${data.lastCheckIn}`;
+      } else {
+        herStatusCircle.classList.remove('checked-in');
+        herTimeDiv.textContent = '-';
+      }
+      updateLastUpdateTime();
+    });
+
+    function updateLastUpdateTime() {
+      const now = new Date();
+      document.getElementById('lastUpdate').textContent = `Updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    }
+
+    // Small delay to show connection was made
+    setTimeout(() => {
+      document.getElementById('lastUpdate').textContent = "Connected. Status updates in real-time.";
+    }, 1500);
+  </script>
 </body>
 </html>
