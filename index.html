@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Daily Check-In</title>
   <style>
+    /* TODO O CSS ANTERIOR (mantenha igual) */
     * {
       box-sizing: border-box;
     }
@@ -35,106 +36,56 @@
       margin-bottom: 12px;
       letter-spacing: -0.02em;
     }
-    p {
-      font-size: 15px;
-      color: #6b756f;
-      line-height: 1.5;
-      margin-bottom: 36px;
+    .user-select {
+      margin-bottom: 30px;
     }
-    .status-container {
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      flex-wrap: wrap;
-    }
-    .user-status {
-      text-align: center;
-    }
-    .user-status h3 {
-      font-size: 16px;
-      font-weight: 500;
-      color: #555;
-      margin-bottom: 15px;
-    }
-    .status-circle {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      margin: 0 auto 20px;
+    .user-select button {
+      margin: 5px;
+      padding: 10px 20px;
       background: #e6ebe8;
-      position: relative;
-      transition: background 0.4s ease;
-    }
-    .status-circle.checked-in {
-      background: #7ec9a2;
-    }
-    .status-circle.checked-in::after {
-      content: "✓";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 38px;
-      color: white;
-      font-weight: 500;
-    }
-    button {
-      background: #2f8f6b;
       border: none;
-      border-radius: 14px;
-      padding: 16px 40px;
-      font-size: 17px;
-      font-weight: 500;
-      color: white;
+      border-radius: 10px;
       cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      box-shadow: 0 8px 18px rgba(47,143,107,0.25);
-      margin-top: 20px;
     }
-    button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 24px rgba(47,143,107,0.28);
+    .user-select button.selected {
+      background: #2f8f6b;
+      color: white;
     }
-    button:active {
-      transform: translateY(0);
-      box-shadow: 0 6px 14px rgba(47,143,107,0.22);
-    }
-    button:disabled {
-      background: #cccccc;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-    #lastUpdate {
-      font-size: 13px;
-      color: #888;
-      margin-top: 25px;
-      font-style: italic;
-    }
+    /* ... resto do CSS igual ... */
   </style>
 </head>
 <body>
 
   <div class="card">
     <h1>Daily Check-In</h1>
-    <p>A quiet signal to let the other person know you're okay today.</p>
-
-    <div class="status-container">
-      <div class="user-status">
-        <h3>You</h3>
-        <div id="myStatus" class="status-circle"></div>
-        <div id="myTime">-</div>
-      </div>
-      <div class="user-status">
-        <h3>Her</h3>
-        <div id="herStatus" class="status-circle"></div>
-        <div id="herTime">-</div>
+    
+    <div id="loginScreen">
+      <p>Who are you?</p>
+      <div class="user-select">
+        <button onclick="setUser('user1')">You</button>
+        <button onclick="setUser('user2')">Her</button>
       </div>
     </div>
 
-    <button id="checkInBtn" onclick="checkIn()">I'm okay</button>
+    <div id="appScreen" style="display: none;">
+      <p>A quiet signal to let the other person know you're okay today.</p>
 
-    <div id="lastUpdate">Connecting...</div>
+      <div class="status-container">
+        <div class="user-status">
+          <h3>You</h3>
+          <div id="myStatus" class="status-circle"></div>
+          <div id="myTime">-</div>
+        </div>
+        <div class="user-status">
+          <h3>Her</h3>
+          <div id="herStatus" class="status-circle"></div>
+          <div id="herTime">-</div>
+        </div>
+      </div>
+
+      <button id="checkInBtn" onclick="checkIn()">I'm okay</button>
+      <div id="lastUpdate">Connecting...</div>
+    </div>
   </div>
 
   <!-- Firebase Libraries -->
@@ -142,7 +93,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
   <script>
-   
     const firebaseConfig = {
       apiKey: "AIzaSyDNWN4YXuamyifYfr1PVbLv91YNcuSLT-c",
       authDomain: "check-in-d0f7c.firebaseapp.com",
@@ -154,66 +104,84 @@
       measurementId: "G-FW8NDC4SW4"
     };
 
-   
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
+    
+    let currentUser = null;
+    let myStatusRef = null;
+    let herStatusRef = null;
 
-   
-    const myStatusRef = database.ref('status/user1'); 
-    const herStatusRef = database.ref('status/user2'); 
+    function setUser(userId) {
+      currentUser = userId;
+      
+      // Esconde a tela de login, mostra o app
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display = 'block';
+      
+      // Configura as referências baseadas no usuário
+      if (userId === 'user1') {
+        myStatusRef = database.ref('status/user1');
+        herStatusRef = database.ref('status/user2');
+      } else {
+        myStatusRef = database.ref('status/user2');
+        herStatusRef = database.ref('status/user1');
+      }
+      
+      // Inicia os listeners
+      setupListeners();
+    }
+
+    function setupListeners() {
+      // Listen for changes to YOUR status
+      myStatusRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        const myStatusCircle = document.getElementById('myStatus');
+        const myTimeDiv = document.getElementById('myTime');
+
+        if (data && data.checkedIn) {
+          myStatusCircle.classList.add('checked-in');
+          myTimeDiv.textContent = `at ${data.lastCheckIn}`;
+        } else {
+          myStatusCircle.classList.remove('checked-in');
+          myTimeDiv.textContent = '-';
+        }
+        updateLastUpdateTime();
+      });
+
+      // Listen for changes to HER status
+      herStatusRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        const herStatusCircle = document.getElementById('herStatus');
+        const herTimeDiv = document.getElementById('herTime');
+
+        if (data && data.checkedIn) {
+          herStatusCircle.classList.add('checked-in');
+          herTimeDiv.textContent = `at ${data.lastCheckIn}`;
+        } else {
+          herStatusCircle.classList.remove('checked-in');
+          herTimeDiv.textContent = '-';
+        }
+        updateLastUpdateTime();
+      });
+    }
 
     function checkIn() {
+      if (!currentUser) return;
+      
       const now = new Date();
       const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
-      
+      // Update YOUR status in the database
       myStatusRef.set({
         checkedIn: true,
         lastCheckIn: timeString
       });
     }
 
-    
-    myStatusRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      const myStatusCircle = document.getElementById('myStatus');
-      const myTimeDiv = document.getElementById('myTime');
-
-      if (data && data.checkedIn) {
-        myStatusCircle.classList.add('checked-in');
-        myTimeDiv.textContent = `at ${data.lastCheckIn}`;
-      } else {
-        myStatusCircle.classList.remove('checked-in');
-        myTimeDiv.textContent = '-';
-      }
-      updateLastUpdateTime();
-    });
-
-    
-    herStatusRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      const herStatusCircle = document.getElementById('herStatus');
-      const herTimeDiv = document.getElementById('herTime');
-
-      if (data && data.checkedIn) {
-        herStatusCircle.classList.add('checked-in');
-        herTimeDiv.textContent = `at ${data.lastCheckIn}`;
-      } else {
-        herStatusCircle.classList.remove('checked-in');
-        herTimeDiv.textContent = '-';
-      }
-      updateLastUpdateTime();
-    });
-
     function updateLastUpdateTime() {
       const now = new Date();
       document.getElementById('lastUpdate').textContent = `Updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
     }
-
-    // Small delay to show connection was made
-    setTimeout(() => {
-      document.getElementById('lastUpdate').textContent = "Connected. Status updates in real-time.";
-    }, 1500);
   </script>
 </body>
 </html>
