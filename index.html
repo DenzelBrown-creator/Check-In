@@ -89,6 +89,10 @@
       transform: scale(1.05);
       box-shadow: 0 8px 20px rgba(126, 201, 162, 0.3);
     }
+    .status-circle.expiring-soon {
+      background: #ffb347; /* Laranja para indicar que vai expirar */
+      animation: gentle-pulse 2s infinite;
+    }
     .status-circle.checked-in::after {
       content: "✓";
       position: absolute;
@@ -98,6 +102,10 @@
       font-size: 38px;
       color: white;
       font-weight: 500;
+    }
+    @keyframes gentle-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
     }
     .pulse-animation {
       animation: pulse 0.6s ease;
@@ -138,32 +146,6 @@
       50% { transform: scale(0.95); }
       100% { transform: scale(1); }
     }
-    button#checkInBtn::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 5px;
-      height: 5px;
-      background: rgba(255, 255, 255, 0.5);
-      opacity: 0;
-      border-radius: 100%;
-      transform: scale(1, 1) translate(-50%);
-      transform-origin: 50% 50%;
-    }
-    button#checkInBtn:focus:not(:active)::after {
-      animation: ripple 1s ease-out;
-    }
-    @keyframes ripple {
-      0% {
-        transform: scale(0, 0);
-        opacity: 0.5;
-      }
-      100% {
-        transform: scale(40, 40);
-        opacity: 0;
-      }
-    }
     #lastUpdate {
       font-size: 13px;
       color: #888;
@@ -174,6 +156,12 @@
       font-size: 14px;
       color: #666;
       min-height: 20px;
+    }
+    .expiry-info {
+      font-size: 12px;
+      color: #888;
+      margin-top: 5px;
+      min-height: 16px;
     }
   </style>
 </head>
@@ -198,11 +186,13 @@
           <h3 id="myLabel">You</h3>
           <div id="myStatus" class="status-circle"></div>
           <div id="myTime" class="time-text">-</div>
+          <div id="myExpiry" class="expiry-info"></div>
         </div>
         <div class="user-status">
           <h3 id="otherLabel">Other</h3>
           <div id="otherStatus" class="status-circle"></div>
           <div id="otherTime" class="time-text">-</div>
+          <div id="otherExpiry" class="expiry-info"></div>
         </div>
       </div>
 
@@ -230,9 +220,15 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     
+    // CHECK-IN DURATION: 12 hours in milliseconds
+    const CHECK_IN_DURATION = 12 * 60 * 60 * 1000;
+    // WARNING THRESHOLD: 1 hour before expiry (changes color to orange)
+    const WARNING_THRESHOLD = 60 * 60 * 1000;
+    
     let currentUser = null;
     let myStatusRef = null;
     let otherStatusRef = null;
+    let expiryCheckInterval = null;
 
     function setUser(userType) {
       currentUser = userType;
@@ -260,52 +256,76 @@
       
       // Inicia os listeners
       setupListeners();
+      
+      // Inicia o verificador de expiração
+      if (expiryCheckInterval) clearInterval(expiryCheckInterval);
+      expiryCheckInterval = setInterval(checkExpiries, 60000); // Verifica a cada minuto
     }
 
     function setupListeners() {
       // Listen for changes to YOUR status
       myStatusRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        const myStatusCircle = document.getElementById('myStatus');
-        const myTimeDiv = document.getElementById('myTime');
-
-        if (data && data.checkedIn) {
-          myStatusCircle.classList.add('checked-in');
-          myStatusCircle.classList.add('pulse-animation');
-          myTimeDiv.textContent = `at ${data.lastCheckIn}`;
-          
-          // Remove animation class after it completes
-          setTimeout(() => {
-            myStatusCircle.classList.remove('pulse-animation');
-          }, 600);
-        } else {
-          myStatusCircle.classList.remove('checked-in');
-          myTimeDiv.textContent = '-';
-        }
+        updateStatusDisplay(snapshot.val(), 'my');
         updateLastUpdateTime();
       });
 
       // Listen for changes to OTHER person's status
       otherStatusRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        const otherStatusCircle = document.getElementById('otherStatus');
-        const otherTimeDiv = document.getElementById('otherTime');
-
-        if (data && data.checkedIn) {
-          otherStatusCircle.classList.add('checked-in');
-          otherStatusCircle.classList.add('pulse-animation');
-          otherTimeDiv.textContent = `at ${data.lastCheckIn}`;
-          
-          // Remove animation class after it completes
-          setTimeout(() => {
-            otherStatusCircle.classList.remove('pulse-animation');
-          }, 600);
-        } else {
-          otherStatusCircle.classList.remove('checked-in');
-          otherTimeDiv.textContent = '-';
-        }
+        updateStatusDisplay(snapshot.val(), 'other');
         updateLastUpdateTime();
       });
+    }
+
+    function updateStatusDisplay(data, prefix) {
+      const statusCircle = document.getElementById(`${prefix}Status`);
+      const timeDiv = document.getElementById(`${prefix}Time`);
+      const expiryDiv = document.getElementById(`${prefix}Expiry`);
+      
+      if (data && data.checkedIn && data.expiresAt) {
+        const now = Date.now();
+        const expiresAt = data.expiresAt;
+        const timeRemaining = expiresAt - now;
+        
+        // Update time display
+        timeDiv.textContent = `at ${data.lastCheckIn}`;
+        
+        // Update circle color based on expiry
+        if (timeRemaining > 0) {
+          statusCircle.classList.add('checked-in');
+          statusCircle.classList.remove('expiring-soon');
+          
+          // Add pulse animation for new check-ins (first 10 seconds)
+          if (now - data.timestamp < 10000) {
+            statusCircle.classList.add('pulse-animation');
+            setTimeout(() => {
+              statusCircle.classList.remove('pulse-animation');
+            }, 600);
+          }
+          
+          // Show warning if expiring soon (last hour)
+          if (timeRemaining < WARNING_THRESHOLD) {
+            statusCircle.classList.add('expiring-soon');
+            const hoursLeft = Math.ceil(timeRemaining / (60 * 60 * 1000));
+            expiryDiv.textContent = `Expires in ~${hoursLeft}h`;
+            expiryDiv.style.color = '#ff8c00';
+          } else {
+            const hoursLeft = Math.floor(timeRemaining / (60 * 60 * 1000));
+            expiryDiv.textContent = `Valid for ${hoursLeft}h`;
+            expiryDiv.style.color = '#666';
+          }
+        } else {
+          // Expired
+          statusCircle.classList.remove('checked-in', 'expiring-soon');
+          timeDiv.textContent = `at ${data.lastCheckIn} (expired)`;
+          expiryDiv.textContent = 'Expired';
+          expiryDiv.style.color = '#999';
+        }
+      } else {
+        // No active check-in
+        statusCircle.classList.remove('checked-in', 'expiring-soon');
+        timeDiv.textContent = '-';
+        expiryDiv.textContent = '';
+      }
     }
 
     function checkIn() {
@@ -320,13 +340,31 @@
       
       const now = new Date();
       const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const expiresAt = Date.now() + CHECK_IN_DURATION;
       
       // Update YOUR status in the database
-      // Isso vai ativar o listener que atualiza o círculo verde
       myStatusRef.set({
         checkedIn: true,
-        lastCheckIn: timeString
+        lastCheckIn: timeString,
+        expiresAt: expiresAt,
+        timestamp: Date.now()
       });
+    }
+
+    function checkExpiries() {
+      // This function runs every minute to check for expired check-ins
+      // It ensures the UI updates even if no Firebase events fire
+      if (myStatusRef) {
+        myStatusRef.once('value', (snapshot) => {
+          updateStatusDisplay(snapshot.val(), 'my');
+        });
+      }
+      if (otherStatusRef) {
+        otherStatusRef.once('value', (snapshot) => {
+          updateStatusDisplay(snapshot.val(), 'other');
+        });
+      }
+      updateLastUpdateTime();
     }
 
     function updateLastUpdateTime() {
