@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <title>Daily Check-In</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       height: 100vh;
@@ -35,9 +33,7 @@
       margin-bottom: 12px;
       letter-spacing: -0.02em;
     }
-    .user-select {
-      margin-bottom: 30px;
-    }
+    .user-select { margin-bottom: 30px; }
     .user-select button {
       margin: 5px;
       padding: 10px 20px;
@@ -47,13 +43,8 @@
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    .user-select button:hover {
-      background: #d0d8d2;
-    }
-    .user-select button.selected {
-      background: #2f8f6b;
-      color: white;
-    }
+    .user-select button:hover { background: #d0d8d2; }
+    .user-select button.selected { background: #2f8f6b; color: white; }
     p {
       font-size: 15px;
       color: #6b756f;
@@ -66,9 +57,7 @@
       gap: 30px;
       flex-wrap: wrap;
     }
-    .user-status {
-      text-align: center;
-    }
+    .user-status { text-align: center; }
     .user-status h3 {
       font-size: 16px;
       font-weight: 500;
@@ -103,18 +92,9 @@
       color: white;
       font-weight: 500;
     }
-    @keyframes gentle-pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.8; }
-    }
-    .pulse-animation {
-      animation: pulse 0.6s ease;
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1.05); }
-    }
+    @keyframes gentle-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+    .pulse-animation { animation: pulse 0.6s ease; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1.05); } }
     button#checkInBtn {
       background: #2f8f6b;
       border: none;
@@ -138,44 +118,22 @@
       transform: translateY(0);
       box-shadow: 0 4px 12px rgba(47,143,107,0.25);
     }
-    button#checkInBtn.clicked {
-      animation: buttonClick 0.4s ease;
-    }
-    @keyframes buttonClick {
-      0% { transform: scale(1); }
-      50% { transform: scale(0.95); }
-      100% { transform: scale(1); }
-    }
+    button#checkInBtn.clicked { animation: buttonClick 0.4s ease; }
+    @keyframes buttonClick { 0% { transform: scale(1); } 50% { transform: scale(0.95); } 100% { transform: scale(1); } }
     #lastUpdate {
       font-size: 13px;
       color: #888;
       margin-top: 25px;
       font-style: italic;
     }
-    .time-text {
-      font-size: 14px;
-      color: #666;
-      min-height: 20px;
-    }
-    .expiry-info {
-      font-size: 12px;
-      color: #888;
-      margin-top: 5px;
-      min-height: 16px;
-    }
-    .timezone-info {
-      font-size: 11px;
-      color: #aaa;
-      margin-top: 2px;
-      font-style: italic;
-    }
+    .time-text { font-size: 14px; color: #666; min-height: 20px; }
+    .expiry-info { font-size: 12px; color: #888; margin-top: 5px; min-height: 16px; }
+    .timezone-info { font-size: 11px; color: #aaa; margin-top: 2px; font-style: italic; }
   </style>
 </head>
 <body>
-
   <div class="card">
     <h1>Daily Check-In</h1>
-    
     <div id="loginScreen">
       <p>Who are you?</p>
       <div class="user-select">
@@ -183,10 +141,8 @@
         <button onclick="setUser('her')">You/Her</button>
       </div>
     </div>
-
     <div id="appScreen" style="display: none;">
       <p>A quiet signal to let the other person know you're okay today.</p>
-
       <div class="status-container">
         <div class="user-status">
           <h3 id="myLabel">You</h3>
@@ -203,16 +159,12 @@
           <div id="otherExpiry" class="expiry-info"></div>
         </div>
       </div>
-
       <button id="checkInBtn" onclick="checkIn()">I'm okay</button>
       <div id="lastUpdate">Connecting...</div>
     </div>
   </div>
-
-  <!-- Firebase Libraries -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDNWN4YXuamyifYfr1PVbLv91YNcuSLT-c",
@@ -224,24 +176,16 @@
       appId: "1:951259510445:web:7d085e1d4d4ef22293f824",
       measurementId: "G-FW8NDC4SW4"
     };
-
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
-    
-    // CHECK-IN DURATION: 24 HORAS (sua escolha)
     const CHECK_IN_DURATION = 24 * 60 * 60 * 1000;
-    // WARNING THRESHOLD: 4 horas antes de expirar (fica laranja)
     const WARNING_THRESHOLD = 4 * 60 * 60 * 1000;
-    
     let currentUser = null;
     let myStatusRef = null;
     let otherStatusRef = null;
     let expiryCheckInterval = null;
-    
-    // Get user's timezone
     const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const userLocation = getUserLocationFromTimezone(userTimeZone);
-
     function getUserLocationFromTimezone(tz) {
       const timezoneMap = {
         'Africa/Maputo': 'Maputo, Mozambique',
@@ -252,96 +196,61 @@
       };
       return timezoneMap[tz] || tz;
     }
-
     function setUser(userType) {
       currentUser = userType;
-      
-      // Esconde a tela de login, mostra o app
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('appScreen').style.display = 'block';
-      
-      // Configura labels baseado na SUA LÓGICA
       if (userType === 'you') {
-        // Pessoa que escolheu "You/Her" está vendo (VOCÊ, Denzel)
         document.getElementById('myLabel').textContent = 'You';
         document.getElementById('otherLabel').textContent = 'Her';
-        
-        // Mostra timezone
         document.getElementById('myTimezone').textContent = `(${userLocation})`;
-        
-        myStatusRef = database.ref('status/you');    // Denzel
-        otherStatusRef = database.ref('status/her'); // Ela
+        myStatusRef = database.ref('status/you');
+        otherStatusRef = database.ref('status/her');
       } else {
-        // Pessoa que escolheu "Denzel/Him" está vendo (ELA)
         document.getElementById('myLabel').textContent = 'You';
         document.getElementById('otherLabel').textContent = 'Him';
-        
-        // Mostra timezone
         document.getElementById('myTimezone').textContent = `(${userLocation})`;
-        
-        myStatusRef = database.ref('status/her');    // Ela
-        otherStatusRef = database.ref('status/you'); // Denzel
+        myStatusRef = database.ref('status/her');
+        otherStatusRef = database.ref('status/you');
       }
-      
-      // Inicia os listeners
       setupListeners();
-      
-      // Inicia o verificador de expiração (a cada minuto)
       if (expiryCheckInterval) clearInterval(expiryCheckInterval);
       expiryCheckInterval = setInterval(checkExpiries, 60000);
     }
-
     function setupListeners() {
-      // Listen for changes to YOUR status
       myStatusRef.on('value', (snapshot) => {
         updateStatusDisplay(snapshot.val(), 'my');
         updateLastUpdateTime();
       });
-
-      // Listen for changes to OTHER person's status
       otherStatusRef.on('value', (snapshot) => {
         updateStatusDisplay(snapshot.val(), 'other');
         updateLastUpdateTime();
       });
     }
-
     function updateStatusDisplay(data, prefix) {
       const statusCircle = document.getElementById(`${prefix}Status`);
       const timeDiv = document.getElementById(`${prefix}Time`);
       const expiryDiv = document.getElementById(`${prefix}Expiry`);
       const timezoneDiv = document.getElementById(`${prefix}Timezone`);
-      
       if (data && data.checkedIn && data.expiresAt && data.timestampUTC) {
         const nowUTC = Date.now();
         const checkInUTC = data.timestampUTC;
         const expiresAtUTC = data.expiresAt;
         const timeRemaining = expiresAtUTC - nowUTC;
-        
-        // Convert UTC to local time with timezone
         const localTime = new Date(checkInUTC);
         const timeString = localTime.toLocaleTimeString([], { 
           hour: '2-digit', 
           minute: '2-digit',
           timeZoneName: 'short'
         });
-        
-        // Update time display
         timeDiv.textContent = `${timeString}`;
-        
-        // Update circle based on expiry
         if (timeRemaining > 0) {
           statusCircle.classList.add('checked-in');
           statusCircle.classList.remove('expiring-soon');
-          
-          // Animation for new check-ins
           if (nowUTC - checkInUTC < 10000) {
             statusCircle.classList.add('pulse-animation');
-            setTimeout(() => {
-              statusCircle.classList.remove('pulse-animation');
-            }, 600);
+            setTimeout(() => { statusCircle.classList.remove('pulse-animation'); }, 600);
           }
-          
-          // Warning for last 4 hours
           if (timeRemaining < WARNING_THRESHOLD) {
             statusCircle.classList.add('expiring-soon');
             const hoursLeft = Math.ceil(timeRemaining / (60 * 60 * 1000));
@@ -353,60 +262,43 @@
             expiryDiv.style.color = '#666';
           }
         } else {
-          // Expired
           statusCircle.classList.remove('checked-in', 'expiring-soon');
           timeDiv.textContent = `${timeString} (expired)`;
           expiryDiv.textContent = 'Expired';
           expiryDiv.style.color = '#999';
         }
       } else {
-        // No active check-in
         statusCircle.classList.remove('checked-in', 'expiring-soon');
         timeDiv.textContent = '-';
         expiryDiv.textContent = '';
       }
-      
-      // Show time difference for "other" user
       if (prefix === 'other' && data && data.timestampUTC) {
         const otherTime = new Date(data.timestampUTC);
         const userOffset = new Date().getTimezoneOffset();
         const otherOffset = otherTime.getTimezoneOffset();
         const timeDiff = Math.round((userOffset - otherOffset) / 60);
-        
         if (timeDiff !== 0) {
-          const diffText = timeDiff > 0 ? 
-            `${Math.abs(timeDiff)}h ahead of you` : 
-            `${Math.abs(timeDiff)}h behind you`;
+          const diffText = timeDiff > 0 ? `${Math.abs(timeDiff)}h ahead of you` : `${Math.abs(timeDiff)}h behind you`;
           timezoneDiv.textContent = diffText;
         } else {
           timezoneDiv.textContent = 'Same timezone';
         }
       }
     }
-
     function checkIn() {
       if (!currentUser) return;
-      
-      // Button animation
       const button = document.getElementById('checkInBtn');
       button.classList.add('clicked');
-      setTimeout(() => {
-        button.classList.remove('clicked');
-      }, 400);
-      
+      setTimeout(() => { button.classList.remove('clicked'); }, 400);
       const nowUTC = Date.now();
-      const expiresAtUTC = nowUTC + CHECK_IN_DURATION; // 24 HORAS
-      
-      // Save to Firebase
+      const expiresAtUTC = nowUTC + CHECK_IN_DURATION;
       myStatusRef.set({
         checkedIn: true,
         timestampUTC: nowUTC,
         expiresAt: expiresAtUTC
       });
     }
-
     function checkExpiries() {
-      // Auto-check for expiries every minute
       if (myStatusRef) {
         myStatusRef.once('value', (snapshot) => {
           updateStatusDisplay(snapshot.val(), 'my');
@@ -419,7 +311,6 @@
       }
       updateLastUpdateTime();
     }
-
     function updateLastUpdateTime() {
       const now = new Date();
       const localTime = now.toLocaleTimeString([], { 
