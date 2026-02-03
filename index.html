@@ -33,6 +33,30 @@
       margin-bottom: 12px;
       letter-spacing: -0.02em;
     }
+    .password-screen input {
+      padding: 12px 16px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+    .password-screen button {
+      background: #2f8f6b;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 16px;
+      color: white;
+      cursor: pointer;
+      width: 100%;
+    }
+    .error {
+      color: #ff6b6b;
+      font-size: 14px;
+      margin-top: 10px;
+      display: none;
+    }
     .user-select { margin-bottom: 30px; }
     .user-select button {
       margin: 5px;
@@ -134,15 +158,27 @@
 <body>
   <div class="card">
     <h1>Daily Check-In</h1>
-    <div id="loginScreen">
+    
+    <!-- TELA DE SENHA (nova) -->
+    <div id="passwordScreen" class="password-screen">
+      <p>Enter access code:</p>
+      <input type="password" id="passwordInput" placeholder="Enter code" />
+      <button onclick="checkPassword()">Access</button>
+      <div id="passwordError" class="error">Incorrect code</div>
+    </div>
+    
+    <!-- TELA DE ESCOLHA DE USUÁRIO -->
+    <div id="loginScreen" style="display: none;">
       <p>Who are you?</p>
       <div class="user-select">
         <button onclick="setUser('you')">Denzel/Him</button>
         <button onclick="setUser('her')">You/Her</button>
       </div>
     </div>
+    
+    <!-- TELA PRINCIPAL DO APP -->
     <div id="appScreen" style="display: none;">
-      <p>A quiet signal to let us know we are okay today.</p>
+      <p>A quiet signal to let the other person know you're okay today.</p>
       <div class="status-container">
         <div class="user-status">
           <h3 id="myLabel">You</h3>
@@ -163,9 +199,14 @@
       <div id="lastUpdate">Connecting...</div>
     </div>
   </div>
+  
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  
   <script>
+    // CONFIGURAÇÃO DA SENHA (mude para algo pessoal)
+    const ACCESS_CODE = "together24"; // MUDE ESTA SENHA!
+    
     const firebaseConfig = {
       apiKey: "AIzaSyDNWN4YXuamyifYfr1PVbLv91YNcuSLT-c",
       authDomain: "check-in-d0f7c.firebaseapp.com",
@@ -176,6 +217,7 @@
       appId: "1:951259510445:web:7d085e1d4d4ef22293f824",
       measurementId: "G-FW8NDC4SW4"
     };
+    
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     const CHECK_IN_DURATION = 24 * 60 * 60 * 1000;
@@ -186,6 +228,7 @@
     let expiryCheckInterval = null;
     const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const userLocation = getUserLocationFromTimezone(userTimeZone);
+    
     function getUserLocationFromTimezone(tz) {
       const timezoneMap = {
         'Africa/Maputo': 'Maputo, Mozambique',
@@ -196,10 +239,31 @@
       };
       return timezoneMap[tz] || tz;
     }
+    
+    function checkPassword() {
+      const input = document.getElementById('passwordInput').value;
+      const errorDiv = document.getElementById('passwordError');
+      
+      if (input === ACCESS_CODE) {
+        document.getElementById('passwordScreen').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'block';
+        errorDiv.style.display = 'none';
+      } else {
+        errorDiv.style.display = 'block';
+        document.getElementById('passwordInput').value = '';
+        document.getElementById('passwordInput').focus();
+      }
+    }
+    
+    document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') checkPassword();
+    });
+    
     function setUser(userType) {
       currentUser = userType;
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('appScreen').style.display = 'block';
+      
       if (userType === 'you') {
         document.getElementById('myLabel').textContent = 'You';
         document.getElementById('otherLabel').textContent = 'Her';
@@ -213,10 +277,12 @@
         myStatusRef = database.ref('status/her');
         otherStatusRef = database.ref('status/you');
       }
+      
       setupListeners();
       if (expiryCheckInterval) clearInterval(expiryCheckInterval);
       expiryCheckInterval = setInterval(checkExpiries, 60000);
     }
+    
     function setupListeners() {
       myStatusRef.on('value', (snapshot) => {
         updateStatusDisplay(snapshot.val(), 'my');
@@ -227,11 +293,13 @@
         updateLastUpdateTime();
       });
     }
+    
     function updateStatusDisplay(data, prefix) {
       const statusCircle = document.getElementById(`${prefix}Status`);
       const timeDiv = document.getElementById(`${prefix}Time`);
       const expiryDiv = document.getElementById(`${prefix}Expiry`);
       const timezoneDiv = document.getElementById(`${prefix}Timezone`);
+      
       if (data && data.checkedIn && data.expiresAt && data.timestampUTC) {
         const nowUTC = Date.now();
         const checkInUTC = data.timestampUTC;
@@ -243,14 +311,18 @@
           minute: '2-digit',
           timeZoneName: 'short'
         });
+        
         timeDiv.textContent = `${timeString}`;
+        
         if (timeRemaining > 0) {
           statusCircle.classList.add('checked-in');
           statusCircle.classList.remove('expiring-soon');
+          
           if (nowUTC - checkInUTC < 10000) {
             statusCircle.classList.add('pulse-animation');
             setTimeout(() => { statusCircle.classList.remove('pulse-animation'); }, 600);
           }
+          
           if (timeRemaining < WARNING_THRESHOLD) {
             statusCircle.classList.add('expiring-soon');
             const hoursLeft = Math.ceil(timeRemaining / (60 * 60 * 1000));
@@ -272,19 +344,24 @@
         timeDiv.textContent = '-';
         expiryDiv.textContent = '';
       }
+      
       if (prefix === 'other' && data && data.timestampUTC) {
         const otherTime = new Date(data.timestampUTC);
         const userOffset = new Date().getTimezoneOffset();
         const otherOffset = otherTime.getTimezoneOffset();
         const timeDiff = Math.round((userOffset - otherOffset) / 60);
+        
         if (timeDiff !== 0) {
-          const diffText = timeDiff > 0 ? `${Math.abs(timeDiff)}h ahead of you` : `${Math.abs(timeDiff)}h behind you`;
+          const diffText = timeDiff > 0 ? 
+            `${Math.abs(timeDiff)}h ahead of you` : 
+            `${Math.abs(timeDiff)}h behind you`;
           timezoneDiv.textContent = diffText;
         } else {
           timezoneDiv.textContent = 'Same timezone';
         }
       }
     }
+    
     function checkIn() {
       if (!currentUser) return;
       const button = document.getElementById('checkInBtn');
@@ -298,6 +375,7 @@
         expiresAt: expiresAtUTC
       });
     }
+    
     function checkExpiries() {
       if (myStatusRef) {
         myStatusRef.once('value', (snapshot) => {
@@ -311,6 +389,7 @@
       }
       updateLastUpdateTime();
     }
+    
     function updateLastUpdateTime() {
       const now = new Date();
       const localTime = now.toLocaleTimeString([], { 
