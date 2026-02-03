@@ -2,50 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>Daily Check-In</title>
   <style>
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      height: 100vh;
+      min-height: 100vh;
       background: linear-gradient(180deg, #f7f8f6, #eef1ee);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 40px;
       padding: 20px;
     }
     .card {
       background: #ffffff;
-      padding: 48px 42px;
-      border-radius: 22px;
+      padding: 40px 32px;
+      border-radius: 20px;
       width: 100%;
-      max-width: 340px;
+      max-width: 400px;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.06), 0 8px 16px rgba(0,0,0,0.04);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08), 0 6px 12px rgba(0,0,0,0.04);
+      margin: auto;
     }
     h1 {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 500;
       color: #2f3a34;
-      margin-bottom: 12px;
-      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      letter-spacing: -0.01em;
     }
     .password-screen input {
-      padding: 12px 16px;
+      padding: 14px 18px;
       border: 1px solid #ddd;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 16px;
       width: 100%;
       margin-bottom: 15px;
+      box-sizing: border-box;
     }
     .password-screen button {
       background: #2f8f6b;
       border: none;
-      border-radius: 10px;
-      padding: 12px 24px;
+      border-radius: 12px;
+      padding: 14px 20px;
       font-size: 16px;
       color: white;
       cursor: pointer;
@@ -57,15 +59,20 @@
       margin-top: 10px;
       display: none;
     }
-    .user-select { margin-bottom: 30px; }
+    .user-select { 
+      margin-bottom: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
     .user-select button {
-      margin: 5px;
-      padding: 10px 20px;
+      padding: 14px 20px;
       background: #e6ebe8;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
       transition: all 0.2s ease;
+      font-size: 16px;
     }
     .user-select button:hover { background: #d0d8d2; }
     .user-select button.selected { background: #2f8f6b; color: white; }
@@ -73,26 +80,30 @@
       font-size: 15px;
       color: #6b756f;
       line-height: 1.5;
-      margin-bottom: 36px;
+      margin-bottom: 30px;
     }
     .status-container {
       display: flex;
       justify-content: center;
-      gap: 30px;
+      gap: 25px;
       flex-wrap: wrap;
     }
-    .user-status { text-align: center; }
+    .user-status { 
+      text-align: center;
+      flex: 1;
+      min-width: 140px;
+    }
     .user-status h3 {
       font-size: 16px;
       font-weight: 500;
       color: #555;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
     .status-circle {
-      width: 100px;
-      height: 100px;
+      width: 90px;
+      height: 90px;
       border-radius: 50%;
-      margin: 0 auto 20px;
+      margin: 0 auto 15px;
       background: #e6ebe8;
       position: relative;
       transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -112,7 +123,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 38px;
+      font-size: 34px;
       color: white;
       font-weight: 500;
     }
@@ -123,7 +134,7 @@
       background: #2f8f6b;
       border: none;
       border-radius: 14px;
-      padding: 16px 40px;
+      padding: 16px 32px;
       font-size: 17px;
       font-weight: 500;
       color: white;
@@ -131,8 +142,11 @@
       transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       box-shadow: 0 8px 18px rgba(47,143,107,0.25);
       margin-top: 20px;
-      position: relative;
-      overflow: hidden;
+      width: 100%;
+      max-width: 280px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
     }
     button#checkInBtn:hover {
       transform: translateY(-2px);
@@ -149,17 +163,99 @@
       color: #888;
       margin-top: 25px;
       font-style: italic;
+      text-align: center;
     }
-    .time-text { font-size: 14px; color: #666; min-height: 20px; }
-    .expiry-info { font-size: 12px; color: #888; margin-top: 5px; min-height: 16px; }
-    .timezone-info { font-size: 11px; color: #aaa; margin-top: 2px; font-style: italic; }
+    .time-text { 
+      font-size: 14px; 
+      color: #666; 
+      min-height: 20px;
+      word-break: break-word;
+    }
+    .expiry-info { 
+      font-size: 12px; 
+      color: #888; 
+      margin-top: 5px; 
+      min-height: 16px;
+    }
+    .timezone-info { 
+      font-size: 11px; 
+      color: #aaa; 
+      margin-top: 2px; 
+      font-style: italic;
+      word-break: break-word;
+    }
+    
+    @media (max-width: 480px) {
+      body {
+        padding: 15px;
+        justify-content: flex-start;
+        min-height: 100vh;
+      }
+      .card {
+        padding: 30px 24px;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 18px;
+        margin: 0;
+      }
+      h1 {
+        font-size: 20px;
+        margin-bottom: 8px;
+      }
+      p {
+        font-size: 14px;
+        margin-bottom: 25px;
+      }
+      .status-circle {
+        width: 80px;
+        height: 80px;
+      }
+      .status-circle.checked-in::after {
+        font-size: 30px;
+      }
+      .user-status {
+        min-width: 120px;
+      }
+      .user-status h3 {
+        font-size: 15px;
+      }
+      .status-container {
+        gap: 15px;
+      }
+      button#checkInBtn {
+        padding: 15px 28px;
+        font-size: 16px;
+        max-width: 100%;
+      }
+      .password-screen input {
+        padding: 16px 20px;
+        font-size: 17px;
+      }
+      .password-screen button {
+        padding: 16px 20px;
+        font-size: 17px;
+      }
+      .user-select button {
+        padding: 16px 20px;
+        font-size: 17px;
+      }
+    }
+    
+    @media (max-width: 360px) {
+      .status-container {
+        flex-direction: column;
+        align-items: center;
+      }
+      .user-status {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Daily Check-In</h1>
     
-    <!-- TELA DE SENHA (nova) -->
     <div id="passwordScreen" class="password-screen">
       <p>Enter access code:</p>
       <input type="password" id="passwordInput" placeholder="Enter code" />
@@ -167,7 +263,6 @@
       <div id="passwordError" class="error">Incorrect code</div>
     </div>
     
-    <!-- TELA DE ESCOLHA DE USUÁRIO -->
     <div id="loginScreen" style="display: none;">
       <p>Who are you?</p>
       <div class="user-select">
@@ -176,7 +271,6 @@
       </div>
     </div>
     
-    <!-- TELA PRINCIPAL DO APP -->
     <div id="appScreen" style="display: none;">
       <p>A quiet signal to let the other person know you're okay today.</p>
       <div class="status-container">
@@ -204,8 +298,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   
   <script>
-    
-    const ACCESS_CODE = "itsme"; 
+    const ACCESS_CODE = "together24";
     
     const firebaseConfig = {
       apiKey: "AIzaSyDNWN4YXuamyifYfr1PVbLv91YNcuSLT-c",
@@ -308,8 +401,7 @@
         const localTime = new Date(checkInUTC);
         const timeString = localTime.toLocaleTimeString([], { 
           hour: '2-digit', 
-          minute: '2-digit',
-          timeZoneName: 'short'
+          minute: '2-digit'
         });
         
         timeDiv.textContent = `${timeString}`;
@@ -394,10 +486,9 @@
       const now = new Date();
       const localTime = now.toLocaleTimeString([], { 
         hour: '2-digit', 
-        minute: '2-digit',
-        second: '2-digit'
+        minute: '2-digit'
       });
-      document.getElementById('lastUpdate').textContent = `Updated: ${localTime} (${userLocation})`;
+      document.getElementById('lastUpdate').textContent = `Updated: ${localTime}`;
     }
   </script>
 </body>
