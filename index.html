@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Daily Check-In</title>
   <style>
+    /* TODO O CSS ANTERIOR PERMANECE IGUAL */
     * {
       box-sizing: border-box;
     }
@@ -90,7 +91,7 @@
       box-shadow: 0 8px 20px rgba(126, 201, 162, 0.3);
     }
     .status-circle.expiring-soon {
-      background: #ffb347; /* Laranja para indicar que vai expirar */
+      background: #ffb347;
       animation: gentle-pulse 2s infinite;
     }
     .status-circle.checked-in::after {
@@ -163,6 +164,12 @@
       margin-top: 5px;
       min-height: 16px;
     }
+    .timezone-info {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 2px;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -173,8 +180,8 @@
     <div id="loginScreen">
       <p>Who are you?</p>
       <div class="user-select">
-        <button onclick="setUser('you')">Him/Denzel</button>
-        <button onclick="setUser('her')">You/Her</button>
+        <button onclick="setUser('you')">Denzel (You)</button>
+        <button onclick="setUser('her')">Her</button>
       </div>
     </div>
 
@@ -186,12 +193,14 @@
           <h3 id="myLabel">You</h3>
           <div id="myStatus" class="status-circle"></div>
           <div id="myTime" class="time-text">-</div>
+          <div id="myTimezone" class="timezone-info"></div>
           <div id="myExpiry" class="expiry-info"></div>
         </div>
         <div class="user-status">
           <h3 id="otherLabel">Other</h3>
           <div id="otherStatus" class="status-circle"></div>
           <div id="otherTime" class="time-text">-</div>
+          <div id="otherTimezone" class="timezone-info"></div>
           <div id="otherExpiry" class="expiry-info"></div>
         </div>
       </div>
@@ -222,13 +231,30 @@
     
     // CHECK-IN DURATION: 12 hours in milliseconds
     const CHECK_IN_DURATION = 12 * 60 * 60 * 1000;
-    // WARNING THRESHOLD: 1 hour before expiry (changes color to orange)
+    // WARNING THRESHOLD: 1 hour before expiry
     const WARNING_THRESHOLD = 60 * 60 * 1000;
     
     let currentUser = null;
     let myStatusRef = null;
     let otherStatusRef = null;
     let expiryCheckInterval = null;
+    
+    // Get user's timezone and location info
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const userTimeZoneOffset = new Date().getTimezoneOffset(); // in minutes
+    const userLocation = getUserLocationFromTimezone(userTimeZone);
+
+    function getUserLocationFromTimezone(tz) {
+      // Simple mapping of timezones to cities
+      const timezoneMap = {
+        'Africa/Maputo': 'Maputo, Mozambique',
+        'Africa/Johannesburg': 'South Africa',
+        'Europe/London': 'London, UK',
+        'Europe/Lisbon': 'Portugal',
+        'GMT': 'GMT'
+      };
+      return timezoneMap[tz] || tz;
+    }
 
     function setUser(userType) {
       currentUser = userType;
@@ -243,12 +269,18 @@
         document.getElementById('myLabel').textContent = 'You';
         document.getElementById('otherLabel').textContent = 'Her';
         
+        // Mostra seu próprio timezone
+        document.getElementById('myTimezone').textContent = `(${userLocation})`;
+        
         myStatusRef = database.ref('status/you');    // Denzel
         otherStatusRef = database.ref('status/her'); // Ela
       } else {
         // Ela está vendo
         document.getElementById('myLabel').textContent = 'You';
         document.getElementById('otherLabel').textContent = 'Him';
+        
+        // Mostra seu próprio timezone
+        document.getElementById('myTimezone').textContent = `(${userLocation})`;
         
         myStatusRef = database.ref('status/her');    // Ela
         otherStatusRef = database.ref('status/you'); // Denzel
@@ -259,7 +291,7 @@
       
       // Inicia o verificador de expiração
       if (expiryCheckInterval) clearInterval(expiryCheckInterval);
-      expiryCheckInterval = setInterval(checkExpiries, 60000); // Verifica a cada minuto
+      expiryCheckInterval = setInterval(checkExpiries, 60000);
     }
 
     function setupListeners() {
@@ -280,29 +312,39 @@
       const statusCircle = document.getElementById(`${prefix}Status`);
       const timeDiv = document.getElementById(`${prefix}Time`);
       const expiryDiv = document.getElementById(`${prefix}Expiry`);
+      const timezoneDiv = document.getElementById(`${prefix}Timezone`);
       
-      if (data && data.checkedIn && data.expiresAt) {
-        const now = Date.now();
-        const expiresAt = data.expiresAt;
-        const timeRemaining = expiresAt - now;
+      if (data && data.checkedIn && data.expiresAt && data.timestampUTC) {
+        const nowUTC = Date.now();
+        const checkInUTC = data.timestampUTC;
+        const expiresAtUTC = data.expiresAt;
+        const timeRemaining = expiresAtUTC - nowUTC;
         
-        // Update time display
-        timeDiv.textContent = `at ${data.lastCheckIn}`;
+        // Convert UTC timestamp to local time
+        const localTime = new Date(checkInUTC);
+        const timeString = localTime.toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          timeZoneName: 'short'
+        });
+        
+        // Update time display with local time
+        timeDiv.textContent = `${timeString}`;
         
         // Update circle color based on expiry
         if (timeRemaining > 0) {
           statusCircle.classList.add('checked-in');
           statusCircle.classList.remove('expiring-soon');
           
-          // Add pulse animation for new check-ins (first 10 seconds)
-          if (now - data.timestamp < 10000) {
+          // Add pulse animation for new check-ins
+          if (nowUTC - checkInUTC < 10000) {
             statusCircle.classList.add('pulse-animation');
             setTimeout(() => {
               statusCircle.classList.remove('pulse-animation');
             }, 600);
           }
           
-          // Show warning if expiring soon (last hour)
+          // Show warning if expiring soon
           if (timeRemaining < WARNING_THRESHOLD) {
             statusCircle.classList.add('expiring-soon');
             const hoursLeft = Math.ceil(timeRemaining / (60 * 60 * 1000));
@@ -316,7 +358,7 @@
         } else {
           // Expired
           statusCircle.classList.remove('checked-in', 'expiring-soon');
-          timeDiv.textContent = `at ${data.lastCheckIn} (expired)`;
+          timeDiv.textContent = `${timeString} (expired)`;
           expiryDiv.textContent = 'Expired';
           expiryDiv.style.color = '#999';
         }
@@ -325,6 +367,21 @@
         statusCircle.classList.remove('checked-in', 'expiring-soon');
         timeDiv.textContent = '-';
         expiryDiv.textContent = '';
+      }
+      
+      // For "other" user, show estimated timezone difference
+      if (prefix === 'other' && data && data.timestampUTC) {
+        const otherTime = new Date(data.timestampUTC);
+        const timeDiff = Math.round((userTimeZoneOffset - otherTime.getTimezoneOffset()) / 60);
+        
+        if (timeDiff !== 0) {
+          const diffText = timeDiff > 0 ? 
+            `${Math.abs(timeDiff)}h ahead of you` : 
+            `${Math.abs(timeDiff)}h behind you`;
+          timezoneDiv.textContent = diffText;
+        } else {
+          timezoneDiv.textContent = 'Same timezone';
+        }
       }
     }
 
@@ -338,22 +395,19 @@
         button.classList.remove('clicked');
       }, 400);
       
-      const now = new Date();
-      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const expiresAt = Date.now() + CHECK_IN_DURATION;
+      const nowUTC = Date.now();
+      const expiresAtUTC = nowUTC + CHECK_IN_DURATION;
       
-      // Update YOUR status in the database
+      // Save UTC timestamp (universal time) instead of local time string
       myStatusRef.set({
         checkedIn: true,
-        lastCheckIn: timeString,
-        expiresAt: expiresAt,
-        timestamp: Date.now()
+        timestampUTC: nowUTC,  // Universal timestamp
+        expiresAt: expiresAtUTC
       });
     }
 
     function checkExpiries() {
-      // This function runs every minute to check for expired check-ins
-      // It ensures the UI updates even if no Firebase events fire
+      // Check for expired check-ins
       if (myStatusRef) {
         myStatusRef.once('value', (snapshot) => {
           updateStatusDisplay(snapshot.val(), 'my');
@@ -369,7 +423,12 @@
 
     function updateLastUpdateTime() {
       const now = new Date();
-      document.getElementById('lastUpdate').textContent = `Updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+      const localTime = now.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      document.getElementById('lastUpdate').textContent = `Updated: ${localTime} (${userLocation})`;
     }
   </script>
 </body>
